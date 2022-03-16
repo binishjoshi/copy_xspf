@@ -10,38 +10,42 @@ import getpass
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("-p", "--file-path",
-                    help="Path to the xspf file", required=True)
-parser.add_argument("-c", "--convert-flac",
-                    help="Convert flac to mp3", nargs="?", const=True)
-parser.add_argument("-s", "--sync",
-                    help="Sync playlist with output folder", nargs="?", const=True)
-parser.add_argument("-o", "--output-path",
-                    help="Path to the output folder\nFor FTP: relative path to the folder", required=True)
-parser.add_argument("-ftp", "--ftp-server",
-                    help="FTP server address")
+parser.add_argument("-p", "--file-path", help="Path to the xspf file", required=True)
+parser.add_argument(
+    "-c", "--convert", help="Convert flac to mp3/opus\n \tOptions: -c mp3 or -c opus"
+)
+parser.add_argument(
+    "-s", "--sync", help="Sync playlist with output folder", nargs="?", const=True
+)
+parser.add_argument(
+    "-o",
+    "--output-path",
+    help="Path to the output folder\nFor FTP: relative path to the folder",
+    required=True,
+)
+parser.add_argument("-ftp", "--ftp-server", help="FTP server address")
 
 args = parser.parse_args()
 
 file_path = args.file_path
-transcode = args.convert_flac
+transcode = args.convert
 output = args.output_path
 sync = args.sync
 ftp = args.ftp_server
 
 
 def get_filename(path):
-    return path[::-1].split('/')[0][::-1]
+    return path[::-1].split("/")[0][::-1]
 
 
 def connect_ftp():
     f = FTP()
-    port = int(input('\nEnter port: '))
+    port = int(input("\nEnter port: "))
     f.connect(ftp, port=port)
-    require_sign_in = input('\nDoes it require login? (Y/N): ')
-    if require_sign_in in 'yY':
-        user = input('\nEnter username: ')
-        password = getpass.getpass('Enter password: ')
+    require_sign_in = input("\nDoes it require login? (Y/N): ")
+    if require_sign_in in "yY":
+        user = input("\nEnter username: ")
+        password = getpass.getpass("Enter password: ")
         f.login(user=user, passwd=password)
     else:
         f.login()
@@ -68,7 +72,7 @@ for line in lines:
         song_paths.append(line[16:][::-1][12:][::-1])
 
 # List songs in output directory
-extensions = ['.mp3', '.flac']
+extensions = [".mp3", ".flac"]
 output_songs = []
 if ftp == None:
     for song_path in os.listdir(output):
@@ -87,8 +91,7 @@ else:
                 output_songs.append(file_name)
 
 # Remove extensions so that same song will not remain in both .flac and .mp3 format (output_songs_without_extension)
-output_songs_we = [
-    os.path.splitext(song)[0] for song in output_songs]
+output_songs_we = [os.path.splitext(song)[0] for song in output_songs]
 
 print()
 # Start copying or transcoding songs from playlist
@@ -104,33 +107,56 @@ for song_path in song_paths:
                 output_songs.remove(song)
     else:
         song_extension = os.path.splitext(song_name)[1]
-        if song_extension == '.flac' and transcode != None:
-            print('Transcoding ' + song_name)
+        if song_extension == ".flac" and transcode != None:
+            print("Transcoding " + song_name)
+            transcode_ext = transcode
             if ftp == None:
-                transcode_output = f"{output}/{song_name_we}.mp3"
+                transcode_output = f"{output}/{song_name_we}.{transcode_ext}"
             else:
                 try:
                     os.mkdir(".copy_xspf")
                 except FileExistsError:
                     shutil.rmtree(".copy_xspf/")
                     os.mkdir(".copy_xspf/")
-                transcode_output = f".copy_xspf/{song_name_we}.mp3"
-            subprocess.run(["ffmpeg", "-i", f"{song_path}", "-c:a",
-                           "libmp3lame", "-q:a", "0", transcode_output],
-                           stdout=subprocess.DEVNULL,
-                           stderr=subprocess.STDOUT)
+                transcode_output = f".copy_xspf/{song_name_we}.{transcode_ext}"
+            if transcode == "mp3":
+                subprocess.run(
+                    [
+                        "ffmpeg",
+                        "-i",
+                        f"{song_path}",
+                        "-c:a",
+                        "libmp3lame",
+                        "-q:a",
+                        "0",
+                        transcode_output,
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.STDOUT,
+                )
+            elif transcode == "opus":
+                subprocess.run(
+                    [
+                        "opusenc",
+                        "--bitrate",
+                        "128",
+                        f"{song_path}",
+                        transcode_output
+                    ],
+                    stderr=subprocess.STDOUT,
+                )
             if ftp != None:
-                print('Uploading ' + song_name + ' to ' + output)
+                print("Uploading " + song_name + " to " + output)
                 upload_to_ftp(transcode_output, f)
 
         else:
             if ftp != None:
                 # with open(song_path, "rb") as song_file:
                 #     f.storbinary(f"STOR {song_name}", song_file)
-                print('Uploading ' + song_name + ' to ' + output)
+                print("Uploading " + song_name + " to " + output)
                 upload_to_ftp(song_path, f)
             else:
-                print('Copying ' + song_name + ' to ' + output)
+                print("Copying " + song_name + " to " + output)
                 shutil.copy(song_path, output)
 try:
     shutil.rmtree(".copy_xspf/")
@@ -141,7 +167,7 @@ except:
 # if -s is passed, songs that aren't in playlist will be deleted from output path
 if sync != None:
     for output_song in output_songs:
-        print(f'Deleting {output_song} from {output}')
+        print(f"Deleting {output_song} from {output}")
         if ftp == None:
             os.remove(f"{output}/{output_song}")
         else:

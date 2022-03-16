@@ -1,6 +1,10 @@
 # copy_xspf
 This script is written to copy/sync songs from xspf playlist (used in Tauon Music Box) to any other path or to a FTP server
 
+## Requirements:
+ - ffmpeg
+ - opus-tools
+
 # Usage
 
 ### For Tauon Music Box users
