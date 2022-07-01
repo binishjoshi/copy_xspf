@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("-p", "--file-path", help="Path to the xspf file", required=True)
 parser.add_argument(
-    "-c", "--convert", help="Convert flac to mp3/opus\n \tOptions: -c mp3 or -c opus"
+    "-c", "--convert", help="Convert flac to mp3/opus (Default: opus)\n \tOptions: -c mp3 or -c opus"
 )
 parser.add_argument(
     "-s", "--sync", help="Sync playlist with output folder", nargs="?", const=True
@@ -134,7 +134,7 @@ for song_path in song_paths:
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.STDOUT,
                 )
-            elif transcode == "opus":
+            else:
                 subprocess.run(
                     [
                         "opusenc",
@@ -143,6 +143,7 @@ for song_path in song_paths:
                         f"{song_path}",
                         transcode_output
                     ],
+                    stdout=subprocess.DEVNULL,
                     stderr=subprocess.STDOUT,
                 )
             if ftp != None:
