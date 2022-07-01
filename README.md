@@ -52,7 +52,8 @@ python copy_xspf.py -p (path_to_xspf_file) -o (directory_path)
 python copy_xspf.py -p "/home/cyclonejet/.local/share/TauonMusicBox/playlists/vibe.xspf" -o "/run/media/cyclonejet/phone_sd"
 ```
 
-- To transcode/convert flac to mp3 v0, pass ```-c```
+- To transcode/convert flac to opus, pass ```-c```
+- To transcode/convert flac to mp3, pass ```-c mp3```
 - To sync playlist with destination, pass ```-s```
 
 ---
