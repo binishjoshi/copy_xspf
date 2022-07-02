@@ -4,6 +4,7 @@ This script is written to copy/sync songs from xspf playlist (used in Tauon Musi
 ## Requirements:
  - ffmpeg
  - opus-tools
+ - mediainfo
 
 # Usage
 

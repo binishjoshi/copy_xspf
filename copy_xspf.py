@@ -12,7 +12,9 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("-p", "--file-path", help="Path to the xspf file", required=True)
 parser.add_argument(
-    "-c", "--convert", help="Convert flac to mp3/opus (Default: opus)\n \tOptions: -c mp3 or -c opus"
+    "-c",
+    "--convert",
+    help="Convert flac to mp3/opus (Default: opus)\n \tOptions: -c mp3 or -c opus",
 )
 parser.add_argument(
     "-s", "--sync", help="Sync playlist with output folder", nargs="?", const=True
@@ -36,6 +38,12 @@ ftp = args.ftp_server
 
 def get_filename(path):
     return path[::-1].split("/")[0][::-1]
+
+
+def get_up_directory(path):
+    temp = path[::-1].split("/")
+    temp.pop(0)
+    return "/".join(temp)[::-1]
 
 
 def connect_ftp():
@@ -136,13 +144,7 @@ for song_path in song_paths:
                 )
             else:
                 subprocess.run(
-                    [
-                        "opusenc",
-                        "--bitrate",
-                        "128",
-                        f"{song_path}",
-                        transcode_output
-                    ],
+                    ["opusenc", "--bitrate", "128", f"{song_path}", transcode_output],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.STDOUT,
                 )
@@ -151,10 +153,52 @@ for song_path in song_paths:
                 upload_to_ftp(transcode_output, f)
 
         else:
+            # check cover for non-flacs
+            cover_exists = bool()
+            try:
+                os.mkdir(".logs")
+            except FileExistsError:
+                shutil.rmtree(".logs")
+                os.mkdir(".logs")
+            log_file = open(".logs/log.json", "w")
+            json_log = ""
+            proc = subprocess.Popen(
+                ["mediainfo", "--Output=JSON", song_path], stdout=subprocess.PIPE
+            )
+            json_log = proc.stdout.read()
+            import json
+
+            json_data = json.loads(json_log)
+
+            try:
+                cover_exists = json_data["media"]["track"][0]["Cover"]
+            except KeyError:
+                cover_exists = False
+
+            if not cover_exists:
+                print("Cover needs to be embedded")
+                try:
+                    os.mkdir(".copy_xspf")
+                except FileExistsError:
+                    shutil.rmtree(".copy_xspf/")
+                    os.mkdir(".copy_xspf/")
+                up_directory = get_up_directory(song_path)
+                new_path = ".copy_xspf/" + song_name_we + song_extension
+                print(new_path)
+                shutil.copy(song_path, ".copy_xspf/")
+                print(up_directory + '/cover.jpg')
+                subprocess.run(
+                    ["ffmpeg", "-i", new_path, "-i", up_directory + "/cover.jpg", "-map_metadata", "0", "-map", "0", "-map", "1", '.copy_xspf/' + song_name_we + '_cover' + song_extension],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.STDOUT,
+                )
+                song_path = '.copy_xspf/' + song_name_we + '_cover' + song_extension
+
             if ftp != None:
                 # with open(song_path, "rb") as song_file:
                 #     f.storbinary(f"STOR {song_name}", song_file)
                 print("Uploading " + song_name + " to " + output)
+
                 upload_to_ftp(song_path, f)
             else:
                 print("Copying " + song_name + " to " + output)
